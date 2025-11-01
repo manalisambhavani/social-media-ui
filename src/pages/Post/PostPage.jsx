@@ -11,6 +11,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import PostCard from '../../components/PostCard';
 import { useNavigate } from 'react-router-dom';
+import InfiniteScrollList from '../../components/InfiniteScrollList';
 
 export default function PostsPage() {
     const [posts, setPosts] = useState([]);
@@ -20,7 +21,7 @@ export default function PostsPage() {
     const navigate = useNavigate();
 
     // ✅ useCallback ensures the same function reference across renders
-    const fetchPosts = useCallback(async () => {
+    const fetchPosts = useCallback(async (reset = false) => {
         if (!hasNext || loading) return;
         setLoading(true);
         try {
@@ -40,13 +41,13 @@ export default function PostsPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, hasNext, loading]);
+    }, [page, loading]);
 
     const handlePostUpdated = (updatedPost) => {
         setPosts((prev) =>
             prev.map((p) => (p.id === updatedPost.id ? updatedPost : p))
         );
-    };      
+    };
 
     useEffect(() => {
         fetchPosts();
@@ -76,9 +77,15 @@ export default function PostsPage() {
                 Create Post
             </Button>
 
-            {posts.map((p) => (
-                <PostCard key={p.id} post={p} onUpdated={handlePostUpdated}/>
-            ))}
+            <InfiniteScrollList
+                loadMore={() => !loading && setPage((p) => p + 1)} // 👈 block during reload
+                hasMore={!loading && hasNext}
+                loading={loading}
+            >
+                {posts.map((p) => (
+                    <PostCard key={p.id} post={p} onUpdated={handlePostUpdated} />
+                ))}
+            </InfiniteScrollList>
 
             {loading && (
                 <Box sx={{ textAlign: 'center', my: 2 }}>
