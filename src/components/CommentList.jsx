@@ -4,6 +4,8 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import InfiniteScrollList from './InfiniteScrollList';
 import { reactionService } from '../services/reactionService';
 import { commentService } from '../services/commentService';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const CommentList = ({ postId }) => {
     const [comments, setComments] = useState([]);
@@ -104,21 +106,116 @@ const CommentList = ({ postId }) => {
                     {comments.map((comment) => (
                         <Card key={comment.id} variant="outlined" sx={{ mt: 2 }}>
                             <CardContent>
-                                <Typography variant="subtitle2">
-                                    {comment.user?.username || 'Anonymous'}
-                                </Typography>
-                                <Typography variant="body2">{comment.message}</Typography>
-                                <IconButton
-                                    color={comment.userReactionOnComment?.id ? 'error' : 'default'}
-                                    onClick={() => toggleReaction(comment)}
-                                >
-                                    <FavoriteIcon />
-                                </IconButton>
-                                <Typography variant="caption" sx={{ ml: 1 }}>
-                                    {comment.count || 0}
-                                </Typography>
+                                <Typography variant="subtitle2">{comment.user.username}</Typography>
+
+                                {comment.editing ? (
+                                    <>
+                                        <TextField
+                                            fullWidth
+                                            value={comment.editText || comment.message}
+                                            onChange={(e) =>
+                                                setComments((prev) =>
+                                                    prev.map((c) =>
+                                                        c.id === comment.id
+                                                            ? { ...c, editText: e.target.value }
+                                                            : c
+                                                    )
+                                                )
+                                            }
+                                            size="small"
+                                            sx={{ mt: 1 }}
+                                        />
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            sx={{ mt: 1, mr: 1 }}
+                                            onClick={async () => {
+                                                await commentService.update(comment.id, {
+                                                    message: comment.editText,
+                                                });
+                                                const res = await commentService.get(comment.id);
+                                                const updated = res.data.data;
+                                                setComments((prev) =>
+                                                    prev.map((c) =>
+                                                        c.id === updated.id ? updated : c
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            Save
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            sx={{ mt: 1 }}
+                                            onClick={() =>
+                                                setComments((prev) =>
+                                                    prev.map((c) =>
+                                                        c.id === comment.id
+                                                            ? { ...c, editing: false }
+                                                            : c
+                                                    )
+                                                )
+                                            }
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Typography variant="body2">{comment.message}</Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Box>
+                                                <IconButton
+                                                    color={
+                                                        comment.userReactionOnComment?.id ? 'error' : 'default'
+                                                    }
+                                                    onClick={() => toggleReaction(comment)}
+                                                >
+                                                    <FavoriteIcon />
+                                                </IconButton>
+                                                <Typography variant="caption">{comment.count}</Typography>
+                                            </Box>
+                                            
+                                            <Box>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() =>
+                                                        setComments((prev) =>
+                                                            prev.map((c) =>
+                                                                c.id === comment.id
+                                                                    ? { ...c, editing: true }
+                                                                    : c
+                                                            )
+                                                        )
+                                                    }
+                                                >
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+
+                                                <IconButton
+                                                    size="small"
+                                                    color="error"
+                                                    onClick={async () => {
+                                                        if (
+                                                            window.confirm(
+                                                                'Are you sure you want to delete this comment?'
+                                                            )
+                                                        ) {
+                                                            await commentService.delete(comment.id);
+                                                            setComments((prev) =>
+                                                                prev.filter((c) => c.id !== comment.id)
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Box>
+                                        </Box>
+                                    </>
+                                )}
                             </CardContent>
-                        </Card>
+                        </Card>                    
                     ))}
                 </InfiniteScrollList>
             </CardContent>

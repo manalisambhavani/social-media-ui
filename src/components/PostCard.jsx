@@ -9,6 +9,8 @@ import {
     Avatar,
     Tooltip,
     Divider,
+    TextField,
+    Button,
 } from '@mui/material';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -20,6 +22,9 @@ import CommentIcon from '@mui/icons-material/Comment';
 import { useNavigate } from 'react-router-dom';
 import { reactionService } from '../services/reactionService';
 import { postService } from '../services/postService';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 
 const reactionIcons = {
     like: <ThumbUpIcon color="primary" />,
@@ -33,6 +38,9 @@ const reactionIcons = {
 const PostCard = ({ post, onUpdated }) => {
     const navigate = useNavigate();
     const [updating, setUpdating] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(post.title);
+    const [editDescription, setEditDescription] = useState(post.description);
 
     const toggleReaction = useCallback(
         async (reactionName) => {
@@ -65,24 +73,85 @@ const PostCard = ({ post, onUpdated }) => {
                 subheader={`Post #${post.id}`}
             />
             <CardContent>
-                <Typography variant="h6">{post.title}</Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                    {post.description}
-                </Typography>
+                {editing ? (
+                    <>
+                        <TextField
+                            fullWidth
+                            label="Title"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            sx={{ mb: 1 }}
+                        />
+                        <TextField
+                            fullWidth
+                            label="Description"
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            multiline
+                            rows={3}
+                            sx={{ mb: 1 }}
+                        />
+                        <Button
+                            variant="contained"
+                            size="small"
+                            onClick={async () => {
+                                await postService.update(post.id, {
+                                    title: editTitle,
+                                    description: editDescription,
+                                });
+                                const res = await postService.get(post.id);
+                                onUpdated?.(res.data.data);
+                                setEditing(false);
+                            }}
+                        >
+                            Save
+                        </Button>
+                        <Button
+                            size="small"
+                            sx={{ ml: 1 }}
+                            onClick={() => {
+                                setEditing(false);
+                                setEditTitle(post.title);
+                                setEditDescription(post.description);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Typography variant="h6">{post.title}</Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                            {post.description}
+                        </Typography>
+                    </>
+                )}
 
                 <Divider sx={{ mb: 1 }} />
 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {Object.keys(reactionIcons).map((name) => {
                         const count = post.count?.find((c) => c.reactionName === name)?.count || 0;
-                        const isUserReacted = post.UserReaction?.ReactionName === name;
+                        const isUserReacted = post.userReaction?.reactionName === name;
+                        const icon = React.cloneElement(reactionIcons[name], {
+                            // color: isUserReacted ? 'primary' : 'default',
+                        });
                         return (
                             <Tooltip title={name} key={name}>
                                 <IconButton
                                     size="small"
-                                    color={isUserReacted ? 'primary' : 'default'}
                                     onClick={() => toggleReaction(name)}
                                     disabled={updating}
+                                    sx={{
+                                        border: '1px solid',
+                                        borderColor: isUserReacted ? 'primary.main' : 'grey.300',
+                                        borderRadius: '20px',
+                                        px: 1,
+                                        color: isUserReacted ? 'primary.main' : 'text.secondary',
+                                        '&:hover': {
+                                            borderColor: 'primary.main',
+                                        },
+                                    }}
                                 >
                                     {reactionIcons[name]}
                                     <Typography variant="caption" sx={{ ml: 0.5 }}>
@@ -100,9 +169,26 @@ const PostCard = ({ post, onUpdated }) => {
                     <IconButton onClick={() => navigate(`/posts/${post.id}`)}>
                         <CommentIcon />
                     </IconButton>
-                    <Typography variant="caption">
-                        Total Reactions: {post.count?.reduce((sum, c) => sum + c.count, 0) || 0}
-                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <IconButton size="small" onClick={() => setEditing(true)}>
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                            size="small"
+                            color="error"
+                            onClick={async () => {
+                                if (window.confirm('Are you sure you want to delete this post?')) {
+                                    await postService.delete(post.id);
+                                    onUpdated?.(null); // null means remove from list
+                                }
+                            }}
+                        >
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                        <Typography variant="caption">
+                            Total Reactions: {post.count?.reduce((sum, c) => sum + c.count, 0) || 0}
+                        </Typography>
+                    </Box>
                 </Box>
             </CardContent>
         </Card>

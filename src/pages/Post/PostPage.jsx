@@ -43,12 +43,6 @@ export default function PostsPage() {
         }
     }, [page, loading]);
 
-    const handlePostUpdated = (updatedPost) => {
-        setPosts((prev) =>
-            prev.map((p) => (p.id === updatedPost.id ? updatedPost : p))
-        );
-    };
-
     useEffect(() => {
         fetchPosts();
     }, [fetchPosts]);
@@ -83,8 +77,22 @@ export default function PostsPage() {
                 loading={loading}
             >
                 {posts.map((p) => (
-                    <PostCard key={p.id} post={p} onUpdated={handlePostUpdated} />
+                    <PostCard
+                        key={p.id}
+                        post={p}
+                        onUpdated={(updated) => {
+                            if (!updated) {
+                                // deleted post
+                                setPosts((prev) => prev.filter((x) => x.id !== p.id));
+                            } else {
+                                setPosts((prev) =>
+                                    prev.map((x) => (x.id === updated.id ? updated : x))
+                                );
+                            }
+                        }}
+                    />
                 ))}
+
             </InfiniteScrollList>
 
             {loading && (
